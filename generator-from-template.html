@@ -1,0 +1,294 @@
+```html
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Signature Generator (Template: signsvg.html)</title>
+  <style>
+    :root { --border:#e5e7eb; --muted:#6b7280; }
+    body { font-family: Arial, Helvetica, sans-serif; margin:0; color:#111827; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h1 { margin:0 0 10px; font-size: 18px; }
+    p { margin:0 0 18px; color: var(--muted); }
+    .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+    @media (min-width: 980px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { border:1px solid var(--border); border-radius:14px; padding:16px; }
+    label { display:block; font-size:12px; color:#374151; margin:10px 0 6px; }
+    input { width:100%; padding:10px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
+    .row { display:grid; grid-template-columns: 1fr; gap:12px; }
+    @media (min-width: 520px) { .row { grid-template-columns: 1fr 1fr; } }
+    .btns { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    button {
+      padding: 10px 12px; border-radius:10px; border:1px solid var(--border);
+      background:#f9fafb; cursor:pointer; font-size:14px;
+    }
+    button.primary { background:#111827; color:#fff; border-color:#111827; }
+    .previewWrap { border: 1px dashed var(--border); border-radius: 12px; padding:12px; overflow:auto; }
+    textarea {
+      width:100%; min-height:220px; padding:10px; border:1px solid var(--border);
+      border-radius:10px; font-size:12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .small { font-size:12px; color: var(--muted); margin-top:8px; }
+    .toast { font-size:12px; color:#065f46; margin-top:10px; display:none; }
+    .danger { font-size:12px; color:#991b1b; margin-top:10px; display:none; }
+    .warn { font-size:12px; color:#92400e; margin-top:10px; }
+    .note { font-size:12px; color:#065f46; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Signature Generator (uses <code>signsvg.html</code>)</h1>
+    <p>
+      This page loads <b>signsvg.html</b> from the same folder, replaces placeholders like
+      <code>{{name}}</code>, <code>{{position}}</code>, <code>{{phone}}</code>, <code>{{whatsapp}}</code>, <code>{{email}}</code>,
+      then lets you copy/download.
+    </p>
+
+    <div class="grid">
+      <!-- FORM -->
+      <div class="card">
+        <h2 style="margin:0 0 8px; font-size:14px;">User details</h2>
+
+        <div class="warn">
+          ⚠️ If you open this via <code>file://</code>, your browser may block loading <code>signsvg.html</code>.
+          Upload both files to your web host (or serve locally).
+        </div>
+
+        <div class="note">
+          ✅ Your <b>signsvg.html</b> should contain placeholders like:
+          <code>{{name}}</code> <code>{{position}}</code> <code>{{phone}}</code> <code>{{whatsapp}}</code> <code>{{email}}</code>
+        </div>
+
+        <label>Full name</label>
+        <input id="name" placeholder="Mujahed Khairy" value="Mujahed Khairy" />
+
+        <label>Position</label>
+        <input id="position" placeholder="Technical Consultant" value="Technical Consultant" />
+
+        <div class="row">
+          <div>
+            <label>Phone</label>
+            <input id="phone" placeholder="+249 120 014 608" value="+249 120 014 608" />
+          </div>
+          <div>
+            <label>WhatsApp</label>
+            <input id="whatsapp" placeholder="+249 120 014 608" value="+249 120 014 608" />
+          </div>
+        </div>
+
+        <label>Email</label>
+        <input id="email" placeholder="name@iconic-plus.sd" value="shaza@iconic-plus.sd" />
+
+        <div class="btns">
+          <button class="primary" id="copyHtml">Copy Signature HTML</button>
+          <button id="download">Download as name-signature.html</button>
+          <button id="showCode">Show/Hide HTML Code</button>
+          <button id="reloadTpl">Reload template</button>
+        </div>
+
+        <div class="toast" id="toast">Copied ✅</div>
+        <div class="danger" id="danger">Copy failed. Open the HTML code box, select all, and copy manually.</div>
+
+        <div class="small">
+          Paste into: <b>Webmail → Settings → Signature</b> (or your email client signature settings).
+        </div>
+      </div>
+
+      <!-- PREVIEW + CODE -->
+      <div class="card">
+        <h2 style="margin:0 0 8px; font-size:14px;">Preview</h2>
+        <div class="previewWrap" id="preview">Loading template…</div>
+
+        <div id="codeBox" style="display:none; margin-top:12px;">
+          <div class="small">Generated HTML (this is what you paste):</div>
+          <textarea id="htmlCode" readonly></textarea>
+          <div class="small" id="phWarn" style="display:none; color:#92400e; margin-top:8px;">
+            ⚠️ Your output still contains <code>{{...}}</code> placeholders. Add them to the template or fill missing values.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const TEMPLATE_FILE = "signsvg.html"; // same directory
+  let templateHtml = "";               // raw file
+  let templateBody = "";               // extracted signature block
+
+  const $ = (id) => document.getElementById(id);
+
+  function safeFilename(name) {
+    const base = (name || "user").trim() || "user";
+    const cleaned = base.replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, " ");
+    return (cleaned || "user") + "-signature.html";
+  }
+
+  function showToast(ok) {
+    $("toast").style.display = ok ? "block" : "none";
+    $("danger").style.display = ok ? "none" : "block";
+    if (ok) setTimeout(() => ($("toast").style.display = "none"), 1400);
+  }
+
+  // Extract the signature HTML from the template file.
+  // We take the <body> contents if present; otherwise use the whole file.
+  function extractBody(html) {
+    const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    return (m && m[1]) ? m[1].trim() : html.trim();
+  }
+
+  // Escape regexp special chars
+  function escapeRegExp(str) {
+    return String(str).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  // For safe insertion in attribute/text areas
+  function escapeHtml(str) {
+    return String(str)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  // Placeholder replacement: {{name}}, {{ position }}, etc.
+  function applyUser(template, user) {
+    const phone = (user.phone || "").trim();
+    const wa = (user.whatsapp || phone || "").trim();
+
+    const map = {
+      name: user.name || "",
+      position: user.position || "",
+      phone: phone,
+      whatsapp: wa,
+      email: user.email || "",
+    };
+
+    let out = template;
+
+    for (const [key, val] of Object.entries(map)) {
+      const re = new RegExp(`{{\\s*${escapeRegExp(key)}\\s*}}`, "g");
+      out = out.replace(re, escapeHtml(val));
+    }
+
+    return out;
+  }
+
+  function getUser() {
+    return {
+      name: $("name").value.trim(),
+      position: $("position").value.trim(),
+      phone: $("phone").value.trim(),
+      whatsapp: $("whatsapp").value.trim(),
+      email: $("email").value.trim(),
+    };
+  }
+
+  function hasUnreplacedPlaceholders(html) {
+    return /{{\s*[a-zA-Z0-9_]+\s*}}/.test(html);
+  }
+
+  function render() {
+    if (!templateBody) return;
+    const user = getUser();
+    const sig = applyUser(templateBody, user);
+
+    $("preview").innerHTML = sig;
+    $("htmlCode").value = sig;
+
+    // warn if template still contains placeholders
+    $("phWarn").style.display = hasUnreplacedPlaceholders(sig) ? "block" : "none";
+  }
+
+  async function loadTemplate() {
+    $("preview").textContent = "Loading template…";
+    try {
+      const res = await fetch(TEMPLATE_FILE, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      templateHtml = await res.text();
+      templateBody = extractBody(templateHtml);
+      render();
+    } catch (e) {
+      $("preview").innerHTML = `
+        <div style="color:#991b1b; font-size:12px; line-height:1.4;">
+          <b>Could not load ${TEMPLATE_FILE}</b><br>
+          • Make sure <code>${TEMPLATE_FILE}</code> is in the same folder as this generator.<br>
+          • Open via a web server (not <code>file://</code>).<br>
+          • Error: ${escapeHtml(e.message)}
+        </div>
+      `;
+    }
+  }
+
+  async function copyHtml() {
+    const html = $("htmlCode").value;
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        const blobHtml = new Blob([html], { type: "text/html" });
+        const blobText = new Blob([html], { type: "text/plain" });
+        await navigator.clipboard.write([new ClipboardItem({ "text/html": blobHtml, "text/plain": blobText })]);
+        showToast(true);
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(html);
+        showToast(true);
+        return;
+      }
+      throw new Error("Clipboard blocked");
+    } catch (e) {
+      showToast(false);
+    }
+  }
+
+  function downloadFile() {
+    const user = getUser();
+    const sig = $("htmlCode").value || "";
+    const filename = safeFilename(user.name);
+
+    const full = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${escapeHtml(filename)}</title>
+</head>
+<body>
+${sig}
+</body>
+</html>`;
+
+    const blob = new Blob([full], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function toggleCode() {
+    const box = $("codeBox");
+    box.style.display = (box.style.display === "none") ? "block" : "none";
+  }
+
+  ["name","position","phone","whatsapp","email"].forEach(id => {
+    $(id).addEventListener("input", render);
+    $(id).addEventListener("change", render);
+  });
+
+  $("copyHtml").addEventListener("click", copyHtml);
+  $("download").addEventListener("click", downloadFile);
+  $("showCode").addEventListener("click", toggleCode);
+  $("reloadTpl").addEventListener("click", loadTemplate);
+
+  loadTemplate();
+</script>
+</body>
+</html>
+```

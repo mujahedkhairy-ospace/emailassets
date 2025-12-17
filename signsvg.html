@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Title</title>
+
+  <!-- Dark mode: text colors only (light mode unchanged) -->
+  <style>
+    @media (prefers-color-scheme: dark) {
+      .dm-text { color: #e7e7e7 !important; }
+      .dm-muted { color: #b9b9b9 !important; }
+      .dm-strong { color: #ffffff !important; }
+      .dm-link { color: #e7e7e7 !important; }
+      .dm-green { color: #6ee28f !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dm-text" style="font-family: Arial, Helvetica, sans-serif; font-size:10px; color:#2b2b2b; line-height:1.45;">
+
+    <!-- Main block -->
+    <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+      <tr>
+
+        <!-- Logo -->
+        <td style="padding-right:16px; vertical-align:top;">
+          <img src="https://raw.githubusercontent.com/mujahedkhairy-ospace/emailassets/refs/heads/main/Ic%20(470%20x%20150%20px).png"
+               alt="Iconic Plus"
+               width="120"
+               style="display:block; border:0; outline:none;">
+        </td>
+
+        <!-- Vertical divider -->
+        <td style="width:2px; background: #41619d;"></td>
+
+        <!-- Info -->
+        <td style="padding-left:16px; vertical-align:top;">
+
+          <div class="dm-strong" style="font-weight:700; font-size:15px; color:#000;">
+            {{name}}
+          </div>
+
+          <div class="dm-muted" style="color:#555;">
+            {{position}}
+          </div>
+
+          <div style="height:10px;"></div>
+
+          <table cellpadding="0" cellspacing="0" border="0">
+            <!-- Phone -->
+            <tr>
+              <td class="dm-text" style="padding-bottom:6px; white-space:nowrap; font-size:9px; color:#2b2b2b;">
+
+                <img
+                  src="https://raw.githubusercontent.com/mujahedkhairy-ospace/emailassets/refs/heads/main/phone.png"
+                  width="15"
+                  height="15"
+                  alt="Phone"
+                  style="display:inline-block; vertical-align:middle; border:0; outline:none;"
+                >
+                <span style="margin-left:8px; vertical-align:middle; display:inline-block;">
+                  {{phone}}
+                </span>
+              </td>
+            </tr>
+
+            <!-- WhatsApp -->
+            <tr>
+              <td class="dm-text" style="padding-bottom:6px; white-space:nowrap; font-size:9px; color:#2b2b2b;">
+                <!-- (svg unchanged) -->
+                <img
+                src="https://raw.githubusercontent.com/mujahedkhairy-ospace/emailassets/refs/heads/main/whatsapp.png"
+                width="15"
+                height="15"
+                alt="Phone"
+                style="display:inline-block; vertical-align:middle; border:0; outline:none;"
+              >
+
+                <span style="margin-left:8px;">{{whatsapp}}</span>
+              </td>
+            </tr>
+
+            <!-- Email -->
+            <tr>
+              <td style="padding-bottom:6px; white-space:nowrap;font-size:9px;">
+                <!-- (svg unchanged) -->
+                <img
+                  src="https://raw.githubusercontent.com/mujahedkhairy-ospace/emailassets/refs/heads/main/email.png"
+                  width="15"
+                  height="15"
+                  alt="Phone"
+                  style="display:inline-block; vertical-align:middle; border:0; outline:none;"
+                >
+
+                <span style="margin-left:8px;">
+                  <a class="dm-link" href="mailto:{{email}}" style="color:#2b2b2b; text-decoration:none;">
+                    {{email}}
+                  </a>
+                </span>
+              </td>
+            </tr>
+
+            <!-- Website -->
+            <tr>
+              <td style="white-space:nowrap; font-size:9px">
+                <!-- (svg unchanged) -->
+                <img
+                  src="https://raw.githubusercontent.com/mujahedkhairy-ospace/emailassets/refs/heads/main/website.png"
+                  width="15"
+                  height="15"
+                  alt="Phone"
+                  style="display:inline-block; vertical-align:middle; border:0; outline:none;"
+                >
+
+                <span style="margin-left:8px;">
+                  <a class="dm-link" href="https://www.iconic-plus.sd" style="color:#2b2b2b; text-decoration:none;">
+                    www.iconic-plus.sd
+                  </a>
+                </span>
+              </td>
+            </tr>
+          </table>
+
+          <div style="height:10px;"></div>
+
+          <div class="dm-muted" style="color:#666;margin-bottom:6px;">
+            Iconic Plus Control Systems Co. Ltd.<br>
+            Khartoum, Sudan
+          </div>
+
+          <div class="dm-text" style="font-weight:700; color:#2b2b2b; margin-bottom:6px;">
+            <span>Engineering the Future.</span>
+            <span>Connecting Possibilities.</span>
+          </div>
+
+        </td>
+      </tr>
+    </table>
+
+    <!-- Horizontal divider -->
+    <div style="margin:14px 0; border-top:1px solid #cfcfcf;"></div>
+
+    <!-- Disclaimer -->
+    <div class="dm-muted" style="font-size:9px; color:#555; margin-bottom:6px;">
+      The contents of this email message and any attachments are intended solely for the addressee(s), may contain confidential and/or privileged information, and may be legally protected from disclosure. If you are not the intended recipient of this message or their agent, or if this message has been addressed to you in error, please immediately alert the sender by reply email and then delete this message and any attachments. If you are not the intended recipient, you are hereby notified that any use, dissemination, copying, or storage of this message or its attachments is strictly prohibited.
+    </div>
+
+    <!-- Save paper -->
+    <div class="dm-green" style="font-size:10px; color:#1fa34a;">
+      <span style="font-weight:700;">SAVE PAPER:</span>
+      <span>Please consider the environment before printing this email unless it is necessary.</span>
+    </div>
+
+  </div>
+</body>
+</html>

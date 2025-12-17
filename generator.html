@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Signature Generator</title>
+  <style>
+    :root { --border:#e5e7eb; --muted:#6b7280; }
+    body { font-family: Arial, Helvetica, sans-serif; margin:0; color:#111827; }
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    h1 { margin:0 0 10px; font-size: 20px; }
+    p { margin:0 0 18px; color: var(--muted); }
+    .grid { display:grid; grid-template-columns: 1fr; gap:16px; }
+    @media (min-width: 980px) { .grid { grid-template-columns: 1fr 1fr; } }
+    .card { border:1px solid var(--border); border-radius:14px; padding:16px; }
+    label { display:block; font-size:12px; color:#374151; margin:10px 0 6px; }
+    input { width:100%; padding:10px; border:1px solid var(--border); border-radius:10px; font-size:14px; }
+    .row { display:grid; grid-template-columns: 1fr; gap:12px; }
+    @media (min-width: 520px) { .row { grid-template-columns: 1fr 1fr; } }
+    .btns { display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    button {
+      padding: 10px 12px; border-radius:10px; border:1px solid var(--border);
+      background:#f9fafb; cursor:pointer; font-size:14px;
+    }
+    button.primary { background:#111827; color:#fff; border-color:#111827; }
+    .previewWrap { border: 1px dashed var(--border); border-radius: 12px; padding:12px; overflow:auto; }
+    textarea {
+      width:100%; min-height:220px; padding:10px; border:1px solid var(--border);
+      border-radius:10px; font-size:12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .small { font-size:12px; color: var(--muted); margin-top:8px; }
+    .toast { font-size:12px; color:#065f46; margin-top:10px; display:none; }
+    .danger { font-size:12px; color:#991b1b; margin-top:10px; display:none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Company Email Signature Generator</h1>
+    <p>Fill your details → copy HTML into your email signature settings, or download as <b>name-signature.html</b>.</p>
+
+    <div class="grid">
+      <!-- FORM -->
+      <div class="card">
+        <h2 style="margin:0 0 8px; font-size:14px;">User details</h2>
+
+        <label>Full name</label>
+        <input id="name" placeholder="Mujahed Khairy" />
+
+        <label>Position</label>
+        <input id="position" placeholder="Technical Consultant" />
+
+        <div class="row">
+          <div>
+            <label>Phone</label>
+            <input id="phone" placeholder="+249 120 014 608" />
+          </div>
+          <div>
+            <label>WhatsApp</label>
+            <input id="whatsapp" placeholder="+249 120 014 608" />
+          </div>
+        </div>
+
+        <label>Email</label>
+        <input id="email" placeholder="name@iconic-plus.sd" />
+
+        <div class="btns">
+          <button class="primary" id="copyHtml">Copy Signature HTML</button>
+          <button id="download">Download as name-signature.html</button>
+          <button id="showCode">Show/Hide HTML Code</button>
+          <button id="reset">Reset</button>
+        </div>
+
+        <div class="toast" id="toast">Copied ✅</div>
+        <div class="danger" id="danger">Copy failed. Open the HTML code box, select all, and copy manually.</div>
+
+        <div class="small">
+          Paste into: <b>Webmail → Settings → Signature</b> (or your email client signature settings).
+        </div>
+      </div>
+
+      <!-- PREVIEW + CODE -->
+      <div class="card">
+        <h2 style="margin:0 0 8px; font-size:14px;">Preview</h2>
+        <div class="previewWrap" id="preview"></div>
+
+        <div id="codeBox" style="display:none; margin-top:12px;">
+          <div class="small">Generated HTML (this is what you paste):</div>
+          <textarea id="htmlCode" readonly></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // ---------------- DEFAULTS (company-controlled) ----------------
+  const DEFAULTS = {
+    logoUrl: "https://raw.githubusercontent.com/mujahedkhairy-ospace/emailassets/refs/heads/main/Ic%20(470%20x%20150%20px).png",
+    logoWidth: 120,
+    dividerColor: "#41619d",
+
+    companyLine1: "Iconic Plus Control Systems Co. Ltd.",
+    companyLine2: "Khartoum, Sudan",
+    websiteUrl: "https://www.iconic-plus.sd",
+    websiteText: "www.iconic-plus.sd",
+
+    // Legal + footer
+    taglineLine1: "Engineering the Future.",
+    taglineLine2: "Connecting Possibilities.",
+    disclaimer:
+      "The contents of this email message and any attachments are intended solely for the addressee(s), may contain confidential and/or privileged information, and may be legally protected from disclosure. If you are not the intended recipient of this message or their agent, or if this message has been addressed to you in error, please immediately alert the sender by reply email and then delete this message and any attachments. If you are not the intended recipient, you are hereby notified that any use, dissemination, copying, or storage of this message or its attachments is strictly prohibited.",
+    savePaperBold: "SAVE PAPER:",
+    savePaperText: "Please consider the environment before printing this email unless it is necessary.",
+    savePaperColor: "#1fa34a"
+  };
+
+  // ---------------- Helpers ----------------
+  const $ = (id) => document.getElementById(id);
+
+  function esc(s="") {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function safeFilename(name) {
+    const base = (name || "user").trim() || "user";
+    // Keep it simple for all OS: letters/numbers/space/_/-
+    const cleaned = base.replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, " ");
+    return (cleaned || "user") + "-signature.html";
+  }
+
+  function showToast(ok) {
+    $("toast").style.display = ok ? "block" : "none";
+    $("danger").style.display = ok ? "none" : "block";
+    if (ok) setTimeout(() => ($("toast").style.display = "none"), 1400);
+  }
+
+  // ---------------- Inline SVG ICONS (your existing ones) ----------------
+  // Phone (blue)
+  const SVG_PHONE = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 375 375" preserveAspectRatio="xMidYMid meet" style="vertical-align:middle;">
+  <defs>
+    <clipPath id="clip_phone"><path d="M 8.363281 8.363281 L 366.863281 8.363281 L 366.863281 366.863281 L 8.363281 366.863281 Z"/></clipPath>
+  </defs>
+  <g clip-path="url(#clip_phone)">
+    <path fill="#004aad" d="M 187.578125 8.394531 C 88.792969 8.394531 8.429688 88.765625 8.429688 187.546875 C 8.429688 286.332031 88.792969 366.695312 187.578125 366.695312 C 286.359375 366.695312 366.730469 286.332031 366.730469 187.546875 C 366.730469 88.765625 286.359375 8.394531 187.578125 8.394531 Z M 187.578125 20.359375 C 279.921875 20.359375 354.773438 95.210938 354.773438 187.546875 C 354.773438 279.886719 279.921875 354.738281 187.578125 354.738281 C 95.242188 354.738281 20.386719 279.886719 20.386719 187.546875 C 20.386719 95.210938 95.242188 20.359375 187.578125 20.359375"/>
+  </g>
+  <path fill="#004aad" d="M 286.21875 281.722656 C 299.140625 268.503906 284.324219 255.820312 273.039062 244.128906 C 263.40625 234.140625 247.5625 217.371094 232.175781 219.195312 C 223.628906 220.203125 216.957031 228.863281 208.488281 231.542969 C 197.6875 234.964844 187.234375 232.515625 178.535156 225.347656 C 172.710938 220.546875 166.546875 214.742188 160.863281 208.605469 C 155.039062 202.605469 149.574219 196.136719 145.09375 190.0625 C 138.398438 180.992188 136.515625 170.429688 140.503906 159.824219 C 143.632812 151.507812 152.640625 145.308594 154.109375 136.828125 C 156.746094 121.5625 140.851562 104.839844 131.394531 94.6875 C 120.320312 82.800781 108.453125 67.328125 94.554688 79.519531 C 94.347656 79.703125 86.902344 86.78125 86.695312 86.972656 C 72.671875 100.074219 68.875 121.632812 72.128906 139.871094 C 73.320312 146.53125 75.179688 153.054688 77.542969 159.390625 C 88.1875 187.980469 108.25 215.640625 129.699219 238.148438 C 151.019531 260.765625 177.570312 282.277344 205.546875 294.4375 C 211.75 297.136719 218.164062 299.351562 224.75 300.890625 C 242.789062 305.117188 264.519531 302.472656 278.351562 289.171875 C 278.558594 288.980469 286.023438 281.921875 286.21875 281.722656"/>
+</svg>`;
+
+  // WhatsApp (green) — using your large SVG is fine too; keeping it compact here:
+  const SVG_WA = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 375 375" preserveAspectRatio="xMidYMid meet" style="vertical-align:middle;">
+  <defs>
+    <clipPath id="clip_wa"><path d="M 8.339844 7.359375 L 366.839844 7.359375 L 366.839844 367.359375 L 8.339844 367.359375 Z"/></clipPath>
+  </defs>
+  <g clip-path="url(#clip_wa)">
+    <path fill="#37bb4a" d="M 314.410156 59.855469 C 280.734375 26.144531 235.949219 7.542969 188.226562 7.542969 C 89.898438 7.542969 9.871094 87.550781 9.835938 185.914062 C 9.835938 217.347656 18.042969 248.054688 33.652344 275.09375 L 8.339844 367.527344 L 102.910156 342.714844 C 128.972656 356.9375 158.304688 364.414062 188.15625 364.429688 L 188.226562 364.429688 C 286.535156 364.429688 366.582031 284.402344 366.601562 186.058594 C 366.601562 138.390625 348.089844 93.585938 314.394531 59.855469 Z M 188.226562 334.3125 L 188.171875 334.3125 C 161.582031 334.3125 135.46875 327.15625 112.703125 313.648438 L 107.289062 310.425781 L 51.167969 325.144531 L 66.136719 270.429688 L 62.613281 264.820312 C 47.769531 241.21875 39.9375 213.933594 39.953125 185.914062 C 39.988281 104.175781 106.507812 37.660156 188.28125 37.660156 C 227.886719 37.660156 265.105469 53.109375 293.105469 81.144531 C 321.101562 109.160156 336.5 146.417969 336.484375 186.039062 C 336.445312 267.792969 269.929688 334.3125 188.210938 334.3125 Z"/>
+  </g>
+</svg>`;
+
+  // Email (blue)
+  const SVG_EMAIL = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 375 375" preserveAspectRatio="xMidYMid meet" style="vertical-align:middle;">
+  <defs>
+    <clipPath id="clip_mail"><path d="M 7.96875 7.96875 L 367.21875 7.96875 L 367.21875 367.21875 L 7.96875 367.21875 Z"/></clipPath>
+  </defs>
+  <g clip-path="url(#clip_mail)">
+    <path fill="#004aad" d="M 187.496094 7.96875 C 88.488281 7.96875 7.96875 88.488281 7.96875 187.496094 C 7.96875 286.503906 88.488281 367.019531 187.496094 367.019531 C 286.503906 367.019531 367.019531 286.503906 367.019531 187.496094 C 367.019531 88.488281 286.503906 7.96875 187.496094 7.96875 Z"/>
+  </g>
+  <path fill="#004aad" d="M 277.882812 129.664062 L 217.105469 187.496094 L 277.882812 245.328125 Z"/>
+  <path fill="#004aad" d="M 187.496094 215.675781 L 162.488281 191.871094 L 101.753906 249.660156 C 103.148438 250.582031 104.652344 251.28125 106.257812 251.761719 C 107.859375 252.238281 109.5 252.476562 111.175781 252.472656 L 263.816406 252.472656 C 265.492188 252.476562 267.128906 252.238281 268.734375 251.761719 C 270.339844 251.28125 271.839844 250.582031 273.238281 249.660156 L 212.503906 191.871094 Z"/>
+</svg>`;
+
+  // Web (blue) — keep yours if you prefer; this is placeholder-simple:
+  const SVG_WEB = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" preserveAspectRatio="xMidYMid meet" style="vertical-align:middle;">
+  <path fill="#004aad" d="M12 2a10 10 0 100 20 10 10 0 000-20zm7.8 9h-3.2a15.6 15.6 0 00-1.2-6 8 8 0 014.4 6zM12 4c.8 1.2 1.6 3.5 1.9 7H10.1c.3-3.5 1.1-5.8 1.9-7zM6.6 11H3.2a8 8 0 014.4-6 15.6 15.6 0 00-1.2 6zm0 2a15.6 15.6 0 001.2 6 8 8 0 01-4.4-6h3.2zM12 20c-.8-1.2-1.6-3.5-1.9-7h3.8c-.3 3.5-1.1 5.8-1.9 7zm4.4-1a15.6 15.6 0 001.2-6h3.2a8 8 0 01-4.4 6z"/>
+</svg>`;
+
+  // ---------------- Signature builder ----------------
+  function buildSignatureHTML(user) {
+    const name = user.name || "Full Name";
+    const position = user.position || "";
+    const phone = user.phone || "";
+    const whatsapp = user.whatsapp || "";
+    const email = user.email || "";
+
+    return `
+<div style="font-family: Arial, Helvetica, sans-serif; font-size:10px; color:#2b2b2b; line-height:1.45;">
+
+  <table cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;">
+    <tr>
+      <td style="padding-right:16px; vertical-align:top;">
+        <img src="${esc(DEFAULTS.logoUrl)}"
+             alt="Iconic Plus"
+             width="${esc(DEFAULTS.logoWidth)}"
+             style="display:block; border:0; outline:none;">
+      </td>
+
+      <td style="width:2px; background:${esc(DEFAULTS.dividerColor)};"></td>
+
+      <td style="padding-left:16px; vertical-align:top;">
+        <div style="font-weight:700; font-size:15px; color:#000;">${esc(name)}</div>
+
+        ${position ? `<div style="color:#555;">${esc(position)}</div>` : ""}
+
+        <div style="height:10px;"></div>
+
+        <table cellpadding="0" cellspacing="0" border="0">
+          ${phone ? `
+          <tr>
+            <td style="padding-bottom:6px; white-space:nowrap; font-size:9px;">
+              ${SVG_PHONE}
+              <span style="margin-left:8px; vertical-align:middle; display:inline-block;">${esc(phone)}</span>
+            </td>
+          </tr>` : ""}
+
+          ${whatsapp ? `
+          <tr>
+            <td style="padding-bottom:6px; white-space:nowrap; font-size:9px;">
+              ${SVG_WA}
+              <span style="margin-left:8px; vertical-align:middle; display:inline-block;">${esc(whatsapp)}</span>
+            </td>
+          </tr>` : ""}
+
+          ${email ? `
+          <tr>
+            <td style="padding-bottom:6px; white-space:nowrap; font-size:9px;">
+              ${SVG_EMAIL}
+              <span style="margin-left:8px; vertical-align:middle; display:inline-block;">
+                <a href="mailto:${esc(email)}" style="color:#2b2b2b; text-decoration:none;">${esc(email)}</a>
+              </span>
+            </td>
+          </tr>` : ""}
+
+          <tr>
+            <td style="white-space:nowrap; font-size:9px;">
+              ${SVG_WEB}
+              <span style="margin-left:8px; vertical-align:middle; display:inline-block;">
+                <a href="${esc(DEFAULTS.websiteUrl)}" style="color:#2b2b2b; text-decoration:none;">${esc(DEFAULTS.websiteText)}</a>
+              </span>
+            </td>
+          </tr>
+        </table>
+
+        <div style="height:10px;"></div>
+
+        <div style="color:#666; margin-bottom:6px;">
+          ${esc(DEFAULTS.companyLine1)}<br>
+          ${esc(DEFAULTS.companyLine2)}
+        </div>
+
+        <div style="font-weight:700; color:#2b2b2b; margin-bottom:6px;">
+          <span>${esc(DEFAULTS.taglineLine1)}</span>
+          <span>${esc(DEFAULTS.taglineLine2)}</span>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin:14px 0; border-top:1px solid #cfcfcf;"></div>
+
+  <div style="font-size:9px; color:#555; margin-bottom:6px;">
+    ${esc(DEFAULTS.disclaimer)}
+  </div>
+
+  <div style="font-size:10px; color:${esc(DEFAULTS.savePaperColor)};">
+    <span style="font-weight:700;">${esc(DEFAULTS.savePaperBold)}</span>
+    <span>${esc(DEFAULTS.savePaperText)}</span>
+  </div>
+</div>`.trim();
+  }
+
+  function buildFullHtmlFile(signatureHtml, title) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>${esc(title)}</title>
+</head>
+<body>
+${signatureHtml}
+</body>
+</html>`;
+  }
+
+  function getUser() {
+    return {
+      name: $("name").value.trim(),
+      position: $("position").value.trim(),
+      phone: $("phone").value.trim(),
+      whatsapp: $("whatsapp").value.trim(),
+      email: $("email").value.trim(),
+    };
+  }
+
+  function render() {
+    const user = getUser();
+    const sig = buildSignatureHTML(user);
+    $("preview").innerHTML = sig;
+    $("htmlCode").value = sig;
+  }
+
+  async function copyHtml() {
+    const html = $("htmlCode").value;
+    try {
+      if (navigator.clipboard && window.ClipboardItem) {
+        const blobHtml = new Blob([html], { type: "text/html" });
+        const blobText = new Blob([html], { type: "text/plain" });
+        await navigator.clipboard.write([new ClipboardItem({ "text/html": blobHtml, "text/plain": blobText })]);
+        showToast(true);
+        return;
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(html);
+        showToast(true);
+        return;
+      }
+      throw new Error("Clipboard blocked");
+    } catch (e) {
+      showToast(false);
+    }
+  }
+
+  function downloadFile() {
+    const user = getUser();
+    const sig = buildSignatureHTML(user);
+    const filename = safeFilename(user.name);
+    const full = buildFullHtmlFile(sig, filename);
+
+    const blob = new Blob([full], { type: "text/html;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function toggleCode() {
+    const box = $("codeBox");
+    box.style.display = (box.style.display === "none") ? "block" : "none";
+  }
+
+  function resetAll() {
+    ["name","position","phone","whatsapp","email"].forEach(id => $(id).value = "");
+    render();
+  }
+
+  ["name","position","phone","whatsapp","email"].forEach(id => {
+    $(id).addEventListener("input", render);
+    $(id).addEventListener("change", render);
+  });
+
+  $("copyHtml").addEventListener("click", copyHtml);
+  $("download").addEventListener("click", downloadFile);
+  $("showCode").addEventListener("click", toggleCode);
+  $("reset").addEventListener("click", resetAll);
+
+  render();
+</script>
+</body>
+</html>
